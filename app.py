@@ -1,15 +1,41 @@
 import random
-from fastapi import FastAPI
+from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
 
-class PureLottoSystem:
+class SajuLottoSystem:
 
     def __init__(self):
         self.pool = list(range(1, 46))
-        self.weights = [1.0] * 45
+        # 오행별 로또 번호 배속 (일반적인 역학 기준)
+        self.element_map = {
+            "木": [3, 4, 8, 13, 14, 18, 23, 24, 28, 33, 34, 38, 43, 44],  # 3, 8 계열
+            "火": [2, 7, 12, 17, 22, 27, 32, 37, 42],  # 2, 7 계열
+            "土": [5, 10, 15, 20, 25, 30, 35, 40, 45],  # 5, 10 계열
+            "金": [4, 9, 14, 19, 24, 29, 34, 39],  # 4, 9 계열
+            "水": [1, 6, 11, 16, 21, 26, 31, 36, 41],  # 1, 6 계열
+        }
+
+    def _get_saju_element(self, year: int):
+        """연도를 기준으로 상생/상극에 필요한 오행을 간이 도출하는 알고리즘"""
+        elements = ["金", "水", "木", "火", "土"]
+        idx = (year - 4) % 10
+        element_idx = idx // 2
+        user_element = elements[element_idx]
+
+        # 해당 사주 기운을 보완하고 대박을 이끄는 '용신 오행' 도출
+        if user_element == "木":
+            return "火 (활동력 증가)", "火"
+        elif user_element == "火":
+            return "土 (재물운 결실)", "土"
+        elif user_element == "土":
+            return "金 (의리 및 횡재)", "金"
+        elif user_element == "金":
+            return "水 (지혜 및 유연성)", "水"
+        else:
+            return "木 (성장 및 발전)", "木"
 
     def _verify_combination(self, numbers):
         total_sum = sum(numbers)
@@ -41,10 +67,18 @@ class PureLottoSystem:
 
         return True
 
-    def generate_games(self, count=5):
+    def generate_saju_games(self, target_element, count=5):
+        # 기본 가중치 1.0 세팅
+        weights = [1.0] * 45
+
+        # 사주에 맞는 행운의 오행 번호들에 가중치 2.5배 부여 (확률 상승)
+        lucky_numbers = self.element_map.get(target_element, [])
+        for num in lucky_numbers:
+            weights[num - 1] = 2.5
+
         results = []
         while len(results) < count:
-            selected = random.choices(self.pool, weights=self.weights, k=10)
+            selected = random.choices(self.pool, weights=weights, k=10)
             selected = sorted(list(set(selected)))[:6]
 
             if len(selected) < 6:
@@ -55,13 +89,14 @@ class PureLottoSystem:
         return results
 
 
-lotto_system = PureLottoSystem()
+saju_system = SajuLottoSystem()
 
 
 # ----------------------------------------------------
-# 1. 초기 화면 (스플래시 스크린) HTML/CSS 생성 함수
+# 1. 입력 화면 (메인 페이지) HTML
 # ----------------------------------------------------
-def get_splash_screen():
+@app.get("/", response_class=HTMLResponse)
+def index():
     return """
     <!DOCTYPE html>
     <html lang="ko">
@@ -69,52 +104,68 @@ def get_splash_screen():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>로또 필터 시스템</title>
-        
         <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
-        <meta name="mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-title" content="로또 필터">
-        
         <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: radial-gradient(circle at center, #1a2a4c 0%, #0d1a33 100%); margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; color: #fff; }
-            .content-box { text-align: center; }
-            .logo-area { position: relative; width: 180px; height: 180px; margin: 0 auto 30px; }
-            .golden-ball { width: 100px; height: 100px; background: radial-gradient(circle at 30% 30%, #ffd700 0%, #b8860b 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 36px; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 40px rgba(255, 215, 0, 0.7); }
-            .swirl-particles { position: absolute; width: 180px; height: 180px; top: 0; left: 0; background: url('https://i.ibb.co/3s8sK8b/swirl-particles.png') no-repeat center/contain; animation: spin-swirl 5s linear infinite; }
-            @keyframes spin-swirl { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            h1 { font-size: 24px; font-weight: bold; margin: 0 0 10px; color: #fff; }
-            .subtitle { font-size: 14px; color: #a1b0cc; margin: 0 0 40px; }
-            .loading-text { font-size: 14px; color: #888; margin: 0; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: radial-gradient(circle at center, #1a2a4c 0%, #0d1a33 100%); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; box-sizing: border-box; }
+            .container { width: 100%; max-width: 400px; background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 24px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); box-sizing: border-box; text-align: center; }
+            h2 { margin-top: 0; font-size: 22px; color: #ffd700; }
+            p { color: #a1b0cc; font-size: 14px; margin-bottom: 25px; }
+            .form-group { margin-bottom: 20px; text-align: left; }
+            label { display: block; font-size: 13px; color: #cbd5e1; margin-bottom: 8px; font-weight: 500; }
+            input, select { width: 100%; padding: 14px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: #fff; font-size: 16px; box-sizing: border-box; outline: none; }
+            input:focus, select:focus { border-color: #ffd700; }
+            .btn { display: block; width: 100%; padding: 16px; background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%); color: #0d1a33; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2); }
         </style>
     </head>
     <body>
-        <div class="content-box">
-            <div class="logo-area">
-                <div class="swirl-particles"></div>
-                <div class="golden-ball">1</div>
-            </div>
-            <h1>로또 필터 시스템</h1>
-            <p class="subtitle">정규분포 & 연속 조합 최적화 완료</p>
-            <p class="loading-text">최적의 조합을 불러오는 중...</p>
+        <div class="container">
+            <h2>로또 사주 필터 시스템</h2>
+            <p>생년월일을 기반으로 선천적 흐름을 분석하여 횡재수가 따르는 오행 번호를 추출합니다.</p>
+            <form action="/lotto" method="post">
+                <div class="form-group">
+                    <label>출생 연도 (4자리)</label>
+                    <input type="number" name="year" placeholder="예: 1985" required min="1930" max="2026">
+                </div>
+                <div class="form-group">
+                    <label>출생 월 및 일</label>
+                    <input type="text" name="birth_date" placeholder="예: 0317" required pattern="[0-9]{4}">
+                </div>
+                <div class="form-group">
+                    <label>태어난 시간</label>
+                    <select name="time_slot">
+                        <option value="unknown">모름 / 상관없음</option>
+                        <option value="자시">자시 (23시~01시)</option>
+                        <option value="축시">축시 (01시~03시)</option>
+                        <option value="인시">인시 (03시~05시)</option>
+                        <option value="묘시">묘시 (05시~07시)</option>
+                        <option value="진시">진시 (07시~09시)</option>
+                        <option value="사시">사시 (09시~11시)</option>
+                        <option value="오시">오시 (11시~13시)</option>
+                        <option value="미시">미시 (13시~15시)</option>
+                        <option value="신시">신시 (15시~17시)</option>
+                        <option value="유시">유시 (17시~19시)</option>
+                        <option value="술시">술시 (19시~21시)</option>
+                        <option value="해시">해시 (21시~23시)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">사주 분석 및 번호 추출</button>
+            </form>
         </div>
-        <script>
-            // 2초 뒤에 메인 결과 화면으로 자동 이동
-            setTimeout(function() {
-                window.location.href = '/lotto';
-            }, 2000);
-        </script>
     </body>
     </html>
     """
 
 
 # ----------------------------------------------------
-# 2. 메인 결과 화면 HTML/CSS 생성 함수
+# 2. 결과 화면 HTML (POST 처리)
 # ----------------------------------------------------
-def get_main_screen():
-    games = lotto_system.generate_games(5)
+@app.post("/lotto", response_class=HTMLResponse)
+def lotto_screen(
+    year: int = Form(...), birth_date: str = Form(...), time_slot: str = Form(...)
+):
+    desc, lucky_element = saju_system._get_saju_element(year)
+    games = saju_system.generate_saju_games(lucky_element, 5)
 
     def get_color_class(num):
         if num <= 10:
@@ -147,16 +198,11 @@ def get_main_screen():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>로또 필터 시스템</title>
-        
-        <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
-        
         <style>
-            body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f5f7fb; margin: 0; padding: 20px; display: flex; justify-content: center; }}
+            body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f7fb; margin: 0; padding: 20px; display: flex; justify-content: center; }}
             .container {{ width: 100%; max-width: 450px; background: white; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); box-sizing: border-box; }}
             h2 {{ text-align: center; color: #333; margin-top: 0; margin-bottom: 5px; font-size: 22px; }}
-            .subtitle {{ text-align: center; color: #888; font-size: 13px; margin-bottom: 25px; }}
+            .saju-box {{ background: #f0f4fc; border-radius: 12px; padding: 15px; margin-bottom: 20px; font-size: 14px; color: #3b82f6; border-left: 5px solid #3b82f6; text-align: left; line-height: 1.5; }}
             .game-row {{ display: flex; align-items: center; margin-bottom: 15px; padding: 12px; background: #fafbfc; border-radius: 12px; border: 1px solid #edf1f7; }}
             .game-label {{ font-weight: bold; color: #555; font-size: 14px; width: 50px; flex-shrink: 0; }}
             .balls-container {{ display: flex; gap: 8px; justify-content: flex-start; width: 100%; }}
@@ -167,36 +213,18 @@ def get_main_screen():
             .ball-gray {{ background: #8e8e93; }}
             .ball-green {{ background: #43a047; }}
             .btn {{ display: block; width: 100%; padding: 15px; background: #3182f6; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; text-align: center; box-shadow: 0 4px 10px rgba(49,130,246,0.3); transition: background 0.2s; margin-top: 25px; text-decoration: none; box-sizing: border-box; }}
-            .btn:active {{ background: #1b64da; }}
         </style>
     </head>
     <body>
         <div class="container">
-            <h2>로또 필터 시스템</h2>
-            <div class="subtitle">정규분포 & 연속 조합 최적화 완료</div>
+            <h2>로또 필터 결과</h2>
+            <div class="saju-box">
+                🔮 <b>분석 정보:</b> {year}년 {birth_date[:2]}월 {birth_date[2:]}일 ({time_slot})<br>
+                ✨ <b>보완 오행:</b> 이번 주 석연님께 필요한 기운은 <b>{desc}</b>입니다. 해당 기운을 가진 고유 번호대에 가중치(2.5x)를 반영하여 필터링을 수행했습니다.
+            </div>
             <div class="results">{games_html}</div>
-            <a href="/lotto" class="btn">새로운 번호 추출하기</a>
+            <a href="/" class="btn">다시 조회하기</a>
         </div>
     </body>
     </html>
     """
-
-
-# ----------------------------------------------------
-# 3. FastAPI 엔드포인트 설정
-# ----------------------------------------------------
-@app.get("/api/lotto")
-def get_lotto_api(count: int = 5):
-    """지정한 개수(기본 5개)만큼 필터링된 로또 게임 데이터를 반환하는 API"""
-    games = lotto_system.generate_games(count)
-    return {"status": "success", "filter_mode": "pure_balance", "games": games}
-
-
-@app.get("/", response_class=HTMLResponse)
-def index():
-    return get_splash_screen()
-
-
-@app.get("/lotto", response_class=HTMLResponse)
-def lotto_screen():
-    return get_main_screen()
