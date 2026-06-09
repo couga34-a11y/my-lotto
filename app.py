@@ -58,11 +58,64 @@ class PureLottoSystem:
 lotto_system = PureLottoSystem()
 
 
-@app.get("/", response_class=HTMLResponse)
-def index():
+# ----------------------------------------------------
+# 1. 초기 화면 (스플래시 스크린) HTML/CSS 생성 함수
+# ----------------------------------------------------
+def get_splash_screen():
+    return """
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>로또 필터 시스템</title>
+        
+        <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-title" content="로또 필터">
+        
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: radial-gradient(circle at center, #1a2a4c 0%, #0d1a33 100%); margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; color: #fff; }
+            .content-box { text-align: center; }
+            .logo-area { position: relative; width: 180px; height: 180px; margin: 0 auto 30px; }
+            .golden-ball { width: 100px; height: 100px; background: radial-gradient(circle at 30% 30%, #ffd700 0%, #b8860b 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 36px; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 40px rgba(255, 215, 0, 0.7); }
+            .swirl-particles { position: absolute; width: 180px; height: 180px; top: 0; left: 0; background: url('https://i.ibb.co/3s8sK8b/swirl-particles.png') no-repeat center/contain; animation: spin-swirl 5s linear infinite; }
+            @keyframes spin-swirl { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            h1 { font-size: 24px; font-weight: bold; margin: 0 0 10px; color: #fff; }
+            .subtitle { font-size: 14px; color: #a1b0cc; margin: 0 0 40px; }
+            .loading-text { font-size: 14px; color: #888; margin: 0; }
+        </style>
+    </head>
+    <body>
+        <div class="content-box">
+            <div class="logo-area">
+                <div class="swirl-particles"></div>
+                <div class="golden-ball">1</div>
+            </div>
+            <h1>로또 필터 시스템</h1>
+            <p class="subtitle">정규분포 & 연속 조합 최적화 완료</p>
+            <p class="loading-text">최적의 조합을 불러오는 중...</p>
+        </div>
+        <script>
+            // 2초 뒤에 메인 결과 화면으로 자동 이동
+            setTimeout(function() {
+                window.location.href = '/lotto';
+            }, 2000);
+        </script>
+    </body>
+    </html>
+    """
+
+
+# ----------------------------------------------------
+# 2. 메인 결과 화면 HTML/CSS 생성 함수
+# ----------------------------------------------------
+def get_main_screen():
     games = lotto_system.generate_games(5)
 
-    # 로또 공 색상 클래스 지정 함수
     def get_color_class(num):
         if num <= 10:
             return "ball-yellow"
@@ -75,7 +128,6 @@ def index():
         else:
             return "ball-green"
 
-    # HTML 내부 결과 렌더링
     games_html = ""
     for idx, game in enumerate(games, 1):
         balls_html = "".join(
@@ -88,14 +140,18 @@ def index():
         </div>
         """
 
-    # 모바일 최적화 UI (HTML/CSS)
-    html_content = f"""
+    return f"""
     <!DOCTYPE html>
-    <html>
+    <html lang="ko">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>석연님 전용 로또 필터 시스템</title>
+        <title>로또 필터 시스템</title>
+        
+        <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
+        
         <style>
             body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f5f7fb; margin: 0; padding: 20px; display: flex; justify-content: center; }}
             .container {{ width: 100%; max-width: 450px; background: white; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); box-sizing: border-box; }}
@@ -116,16 +172,31 @@ def index():
     </head>
     <body>
         <div class="container">
-            <h2>로또 최적 확률 추천 시스템</h2>
-            <div class="subtitle">정규분포 및 연속 번호 제한 필터 완료</div>
-            
-            <div class="results">
-                {games_html}
-            </div>
-            
-            <a href="/" class="btn">새로운 번호 추출하기</a>
+            <h2>로또 필터 시스템</h2>
+            <div class="subtitle">정규분포 & 연속 조합 최적화 완료</div>
+            <div class="results">{games_html}</div>
+            <a href="/lotto" class="btn">새로운 번호 추출하기</a>
         </div>
     </body>
     </html>
     """
-    return html_content
+
+
+# ----------------------------------------------------
+# 3. FastAPI 엔드포인트 설정
+# ----------------------------------------------------
+@app.get("/api/lotto")
+def get_lotto_api(count: int = 5):
+    """지정한 개수(기본 5개)만큼 필터링된 로또 게임 데이터를 반환하는 API"""
+    games = lotto_system.generate_games(count)
+    return {"status": "success", "filter_mode": "pure_balance", "games": games}
+
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return get_splash_screen()
+
+
+@app.get("/lotto", response_class=HTMLResponse)
+def lotto_screen():
+    return get_main_screen()
