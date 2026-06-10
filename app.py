@@ -3,36 +3,39 @@ import random
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 from google import genai
+from google.genai import types
 
 app = FastAPI()
 
-# Render 환경변수 또는 로컬 설정에서 Gemini API 키 로드
+# 최신 google-genai 클라이언트 초기화
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
-class AISajuLottoSystem:
+
+class PremiumAISajuSystem:
+
     def __init__(self):
         self.pool = list(range(1, 46))
-        # 오행별 기본 매핑 데이터 (필터 가중치 반영용 기본 축)
         self.element_map = {
             "木": [3, 4, 8, 13, 14, 18, 23, 24, 28, 33, 34, 38, 43, 44],
             "火": [2, 7, 12, 17, 22, 27, 32, 37, 42],
             "土": [5, 10, 15, 20, 25, 30, 35, 40, 45],
             "金": [4, 9, 14, 19, 24, 29, 34, 39],
-            "水": [1, 6, 11, 16, 21, 26, 31, 36, 41]
+            "水": [1, 6, 11, 16, 21, 26, 31, 36, 41],
         }
 
-    def _get_ai_fortune(self, name: str, year: int, birth_date: str, time_slot: str):
-        """Gemini AI를 호출하여 고유한 사주 분석 및 로또 행운 요소를 획득하는 함수"""
-        if not GEMINI_API_KEY:
+    def get_fortune_and_element(
+        self, name: str, year: int, birth_date: str, time_slot: str
+    ):
+        if not client:
             return {
-                "reading": "현재 AI 엔진의 핵심 Key 설정이 누락되었습니다. Render 대시보드에서 환경변수를 설정해 주십시오.",
-                "lucky_element": "金"
+                "reading": "Render 대시보드 Environment 탭에서 GEMINI_API_KEY를 다시 확인해 주세요.",
+                "lucky_element": "金",
             }
-        
+
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
             prompt = f"""
             너는 정통 사주명리학과 성명학에 정통한 대한민국 최고의 AI 역술가이다.
             아래 사용자의 명식 정보를 기반으로 정밀 사주를 분석하고 이번 주 주간 운세를 작성하라.
@@ -43,37 +46,43 @@ class AISajuLottoSystem:
             - 출생월일: {birth_date[:2]}월 {birth_date[2:]}일
             - 태어난 시간: {time_slot}
             
-            [작성 지침 - 절대 준수]
-            1. 존댓말로 작성하고 전문적이고 신뢰감 있는 무당 혹은 역술가의 뉘앙스를 풍겨라.
-            2. 이번 주의 '종합 주간 총평', '재물운', '직장/커리어운', '행운의 요일(평일 중 2개)', '행운의 구매 방위'를 융합하여 서술형 문장들로 아주 정밀하게 풀어내라.
+            [작성 지침]
+            1. 존댓말로 작성하고 신뢰감 있는 역술가의 뉘앙스로 서술하라.
+            2. 이번 주의 '주간 총평', '재물운', '직장/커리어운', '행운의 요일(평일 중 2개)', '행운의 구매 방위'를 녹여내어 정밀하게 풀어내라.
             3. 답변의 맨 마지막 줄에는 반드시 딱 이 형태 그대로만 추가하라: "최종 보완 오행: [오행]"
-               ([오행] 자리에 木, 火, 土, 金, 水 중 사용자의 이름과 사주 밸런스를 고려해 이번 주 로또 횡재수를 도울 가장 필요한 오행 딱 하나만 선택하여 넣어라. 예: 최종 보완 오행: 水)
+               ([오행] 자리에 木, 火, 土, 金, 水 중 이번 주 로또 횡재수를 도울 가장 필요한 오행 딱 하나만 선택하여 넣어라. 예: 최종 보완 오행: 水)
             """
-            response = model.generate_content(prompt)
+            # 최신 SDK 표준 메서드 적용 (gemini-1.5-flash)
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+            )
             full_text = response.text
-            
-            # 마지막 줄에서 보완 오행 추출하는 파싱 로직
+
             lucky_element = "金"
             for el in ["木", "火", "土", "金", "水"]:
                 if f"최종 보완 오행: {el}" in full_text or el in full_text[-20:]:
                     lucky_element = el
                     break
-            
-            # 화면 표시를 위해 특수 지시어 라인 제거
-            display_text = full_text.replace(f"최종 보완 오행: {lucky_element}", "").strip()
+
+            display_text = full_text.replace(
+                f"최종 보완 오행: {lucky_element}", ""
+            ).strip()
             return {"reading": display_text, "lucky_element": lucky_element}
-            
+
         except Exception as e:
             return {
-                "reading": f"우주의 기운을 읽어오는 중 미세한 노이즈가 발생했습니다. (에러: {str(e)})",
-                "lucky_element": "土"
+                "reading": f"명식을 분석하는 과정에서 노이즈가 발생했습니다. (원인: {str(e)})",
+                "lucky_element": "土",
             }
 
-    def _verify_combination(self, numbers):
+    def verify_numbers(self, numbers):
         total_sum = sum(numbers)
-        if not (100 <= total_sum <= 170): return False
+        if not (100 <= total_sum <= 170):
+            return False
         odds = len([n for n in numbers if n % 2 != 0])
-        if odds == 0 or odds == 6: return False
+        if odds == 0 or odds == 6:
+            return False
 
         consecutive_count = 0
         max_consecutive = 1
@@ -83,28 +92,34 @@ class AISajuLottoSystem:
                 current_consecutive += 1
                 consecutive_count += 1
             else:
-                if current_consecutive > max_consecutive: max_consecutive = current_consecutive
+                if current_consecutive > max_consecutive:
+                    max_consecutive = current_consecutive
                 current_consecutive = 1
-        if current_consecutive > max_consecutive: max_consecutive = current_consecutive
-        if max_consecutive >= 3 or consecutive_count >= 3: return False
+        if current_consecutive > max_consecutive:
+            max_consecutive = current_consecutive
+        if max_consecutive >= 3 or consecutive_count >= 3:
+            return False
         return True
 
-    def generate_saju_games(self, target_element, count=5):
+    def generate_games(self, target_element, count=5):
         weights = [1.0] * 45
-        lucky_numbers = self.element_map.get(target_element, [4, 9, 14, 19, 24, 29, 34, 39])
+        lucky_numbers = self.element_map.get(target_element, [])
         for num in lucky_numbers:
-            weights[num - 1] = 3.5  # AI가 지정한 행운 오행의 가중치를 3.5배로 더 강화
+            weights[num - 1] = 3.5
 
         results = []
         while len(results) < count:
             selected = random.choices(self.pool, weights=weights, k=10)
             selected = sorted(list(set(selected)))[:6]
-            if len(selected) < 6: continue
-            if self._verify_combination(selected) and selected not in results:
+            if len(selected) < 6:
+                continue
+            if self.verify_numbers(selected) and selected not in results:
                 results.append(selected)
         return results
 
-saju_system = AISajuLottoSystem()
+
+saju_system = PremiumAISajuSystem()
+
 
 @app.get("/", response_class=HTMLResponse)
 def index():
@@ -114,7 +129,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>AI로또 필터 시스템</title>
+        <title>로또 필터 시스템</title>
         <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <style>
@@ -129,11 +144,6 @@ def index():
             .btn { display: block; width: 100%; padding: 16px; background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%); color: #0d1a33; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2); }
             #loading { display: none; margin-top: 15px; font-size: 14px; color: #ffd700; font-weight: bold; }
         </style>
-        <script>
-            def showLoading():
-                document.getElementById('btn-submit').style.display = 'none';
-                document.getElementById('loading').style.display = 'block';
-        </script>
     </head>
     <body>
         <div class="container">
@@ -171,29 +181,43 @@ def index():
                     </select>
                 </div>
                 <button type="submit" id="btn-submit" class="btn">AI 융합 사주 분석 및 번호 추출</button>
-                <div id="loading">🔮 AI가 우주의 기운과 명식을 정밀 분석 중입니다... (약 2~3초 소요)</div>
+                <div id="loading">AI가 우주의 기운과 명식을 정밀 분석 중입니다... (약 2~3초 소요)</div>
             </form>
         </div>
     </body>
     </html>
     """
 
+
 @app.post("/lotto", response_class=HTMLResponse)
-def lotto_screen(user_name: str = Form(...), year: int = Form(...), birth_date: str = Form(...), time_slot: str = Form(...)):
-    # AI 기반 실시간 풀이 데이터 획득
-    ai_data = saju_system._get_ai_fortune(user_name, year, birth_date, time_slot)
-    games = saju_system.generate_saju_games(ai_data["lucky_element"], 5)
+def lotto_screen(
+    user_name: str = Form(...),
+    year: int = Form(...),
+    birth_date: str = Form(...),
+    time_slot: str = Form(...),
+):
+    ai_data = saju_system.get_fortune_and_element(
+        user_name, year, birth_date, time_slot
+    )
+    games = saju_system.generate_games(ai_data["lucky_element"], 5)
 
     def get_color_class(num):
-        if num <= 10: return "ball-yellow"
-        elif num <= 20: return "ball-blue"
-        elif num <= 30: return "ball-red"
-        elif num <= 40: return "ball-gray"
-        else: return "ball-green"
+        if num <= 10:
+            return "ball-yellow"
+        elif num <= 20:
+            return "ball-blue"
+        elif num <= 30:
+            return "ball-red"
+        elif num <= 40:
+            return "ball-gray"
+        else:
+            return "ball-green"
 
     games_html = ""
     for idx, game in enumerate(games, 1):
-        balls_html = "".join(f'<div class="ball {get_color_class(n)}">{n:02d}</div>' for n in game)
+        balls_html = "".join(
+            f'<div class="ball {get_color_class(n)}">{n:02d}</div>' for n in game
+        )
         games_html += f"""
         <div class="game-row">
             <span class="game-label">{idx}게임</span>
@@ -201,7 +225,6 @@ def lotto_screen(user_name: str = Form(...), year: int = Form(...), birth_date: 
         </div>
         """
 
-    # AI가 줄바꿈(\n) 처리한 문장들을 HTML 줄바꿈(<br>)으로 변경
     formatted_reading = ai_data["reading"].replace("\n", "<br>")
 
     return f"""
@@ -216,7 +239,7 @@ def lotto_screen(user_name: str = Form(...), year: int = Form(...), birth_date: 
             .container {{ width: 100%; max-width: 480px; background: white; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); box-sizing: border-box; }}
             h2 {{ text-align: center; color: #333; margin-top: 0; margin-bottom: 15px; font-size: 22px; }}
             .saju-box {{ background: #f0f4fc; border-radius: 12px; padding: 15px; margin-bottom: 15px; font-size: 14px; color: #3b82f6; border-left: 5px solid #3b82f6; text-align: left; line-height: 1.5; }}
-            .ai-box {{ background: #fdfaf2; border-radius: 12px; padding: 18px; margin-bottom: 20px; font-size: 14px; color: #333; border-left: 5px solid #d4af37; text-align: left; line-height: 1.7; box-shadow: inset 0 0 10px rgba(0,0,0,0.01); }}
+            .ai-box {{ background: #fdfaf2; border-radius: 12px; padding: 18px; margin-bottom: 20px; font-size: 14px; color: #333; border-left: 5px solid #d4af37; text-align: left; line-height: 1.7; }}
             .ai-title {{ font-weight: bold; font-size: 15px; margin-bottom: 10px; color: #b8860b; border-bottom: 1px solid #f1e3c4; padding-bottom: 5px; }}
             .game-row {{ display: flex; align-items: center; margin-bottom: 15px; padding: 12px; background: #fafbfc; border-radius: 12px; border: 1px solid #edf1f7; }}
             .game-label {{ font-weight: bold; color: #555; font-size: 14px; width: 50px; flex-shrink: 0; }}
@@ -228,23 +251,30 @@ def lotto_screen(user_name: str = Form(...), year: int = Form(...), birth_date: 
             .ball-gray {{ background: #8e8e93; }}
             .ball-green {{ background: #43a047; }}
             .btn {{ display: block; width: 100%; padding: 15px; background: #3182f6; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; text-align: center; box-shadow: 0 4px 10px rgba(49,130,246,0.3); transition: background 0.2s; margin-top: 25px; text-decoration: none; box-sizing: border-box; }}
+            .ad-container {{ background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 8px; padding: 10px; text-align: center; color: #9ca3af; font-size: 12px; margin: 15px 0; }}
         </style>
     </head>
     <body>
         <div class="container">
             <h2>AI 로또 명식 필터 결과</h2>
+            
+            <div class="ad-container">ADVERTISEMENT (구글 애드센스 광고가 게재될 영역입니다)</div>
+
             <div class="saju-box">
                 🔮 <b>입력 명식:</b> {user_name}님 / {year}년 {birth_date[:2]}월 {birth_date[2:]}일 ({time_slot} 출생)
             </div>
             
             <div class="ai-box">
-                <div class="ai-title">Gemini AI의 맞춤 운세 해설</div>
+                <div class="ai-title">명리 대가 Gemini AI의 맞춤 운세 해설</div>
                 {formatted_reading}
                 <br><br>
                 💡 <i>AI가 지정한 보완 오행 번호대에 <b>재물 가중치(3.5x)</b>를 부여하여 번호를 조합했습니다.</i>
             </div>
 
             <div class="results">{games_html}</div>
+
+            <div class="ad-container">ADVERTISEMENT (구글 애드센스 광고가 게재될 영역입니다)</div>
+
             <a href="/" class="btn">다시 명식 입력하기</a>
         </div>
     </body>
