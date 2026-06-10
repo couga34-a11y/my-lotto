@@ -12,5 +12,5 @@ jobs:
     steps:
       - name: Wake up Render server
         run: |
-          curl -s https://여기에-석연님의-render-배포-주소.onrender.com > /dev/null
+          curl -s https://my-lotto.onrender.com/> /dev/null
           echo "서버 깨우기 신호 발송 완료"
