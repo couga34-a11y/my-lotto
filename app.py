@@ -173,4 +173,108 @@ def index():
                         <option value="축시">축시 (01시~03시)</option>
                         <option value="인시">인시 (03시~05시)</option>
                         <option value="묘시">묘시 (05시~07시)</option>
-                        <option value="진시">진
+                        <option value="진시">진시 (07시~09시)</option>
+                        <option value="사시">사시 (09시~11시)</option>
+                        <option value="오시">오시 (11시~13시)</option>
+                        <option value="미시">미시 (13시~15시)</option>
+                        <option value="신시">신시 (15시~17시)</option>
+                        <option value="유시">유시 (17시~19시)</option>
+                        <option value="술시">술시 (19시~21시)</option>
+                        <option value="해시">해시 (21시~23시)</option>
+                    </select>
+                </div>
+                <button type="submit" id="btn-submit" class="btn">AI 융합 사주 분석 및 번호 추출</button>
+                <div id="loading">🔮 명리 대가가 명식을 정밀 분석 중입니다...<br>(깊은 추론 연산으로 인해 약 15~20초 소요)</div>
+            </form>
+        </div>
+    </body>
+    </html>
+    """
+
+
+@app.post("/lotto", response_class=HTMLResponse)
+def lotto_screen(
+    user_name: str = Form(...),
+    year: int = Form(...),
+    birth_date: str = Form(...),
+    time_slot: str = Form(...),
+):
+    ai_data = saju_system.get_fortune_and_element(
+        user_name, year, birth_date, time_slot
+    )
+    games = saju_system.generate_games(ai_data["lucky_element"], 5)
+
+    def get_color_class(num):
+        if num <= 10:
+            return "ball-yellow"
+        elif num <= 20:
+            return "ball-blue"
+        elif num <= 30:
+            return "ball-red"
+        elif num <= 40:
+            return "ball-gray"
+        else:
+            return "ball-green"
+
+    games_html = ""
+    for idx, game in enumerate(games, 1):
+        balls_html = "".join(
+            f'<div class="ball {get_color_class(n)}">{n:02d}</div>' for n in game
+        )
+        games_html += f"""
+        <div class="game-row">
+            <span class="game-label">{idx}게임</span>
+            <div class="balls-container">{balls_html}</div>
+        </div>
+        """
+
+    formatted_reading = ai_data["reading"].replace("\n", "<br>")
+
+    return f"""
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>로또 필터 시스템</title>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f7fb; margin: 0; padding: 20px; display: flex; justify-content: center; }}
+            .container {{ width: 100%; max-width: 480px; background: white; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); box-sizing: border-box; }}
+            h2 {{ text-align: center; color: #333; margin-top: 0; margin-bottom: 15px; font-size: 22px; }}
+            .saju-box {{ background: #f0f4fc; border-radius: 12px; padding: 15px; margin-bottom: 15px; font-size: 14px; color: #3b82f6; border-left: 5px solid #3b82f6; text-align: left; line-height: 1.5; }}
+            .ai-box {{ background: #fdfaf2; border-radius: 12px; padding: 18px; margin-bottom: 20px; font-size: 14px; color: #333; border-left: 5px solid #d4af37; text-align: left; line-height: 1.7; }}
+            .ai-title {{ font-weight: bold; font-size: 15px; margin-bottom: 10px; color: #b8860b; border-bottom: 1px solid #f1e3c4; padding-bottom: 5px; }}
+            .game-row {{ display: flex; align-items: center; margin-bottom: 15px; padding: 12px; background: #fafbfc; border-radius: 12px; border: 1px solid #edf1f7; }}
+            .game-label {{ font-weight: bold; color: #555; font-size: 14px; width: 50px; flex-shrink: 0; }}
+            .balls-container {{ display: flex; gap: 8px; justify-content: flex-start; width: 100%; }}
+            .ball {{ width: 36px; height: 36px; border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
+            .ball-yellow {{ background: #fbc02d; }}
+            .ball-blue {{ background: #1e88e5; }}
+            .ball-red {{ background: #e53935; }}
+            .ball-gray {{ background: #8e8e93; }}
+            .ball-green {{ background: #43a047; }}
+            .btn {{ display: block; width: 100%; padding: 15px; background: #3182f6; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; text-align: center; box-shadow: 0 4px 10px rgba(49,130,246,0.3); transition: background 0.2s; margin-top: 25px; text-decoration: none; box-sizing: border-box; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>AI 로또 명식 필터 결과</h2>
+            
+            <div class="saju-box">
+                🔮 <b>입력 명식:</b> {user_name}님 / {year}년 {birth_date[:2]}월 {birth_date[2:]}일 ({time_slot} 출생)
+            </div>
+            
+            <div class="ai-box">
+                <div class="ai-title">🤖 명리 대가 Gemini AI의 명품 운세 해설</div>
+                {formatted_reading}
+                <br><br>
+                💡 <i>AI가 지정한 보완 오행 번호대에 <b>재물 가중치(3.5x)</b>를 부여하여 번호를 조합했습니다.</i>
+            </div>
+
+            <div class="results">{games_html}</div>
+
+            <a href="/" class="btn">다시 명식 입력하기</a>
+        </div>
+    </body>
+    </html>
+    """
