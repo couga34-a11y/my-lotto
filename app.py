@@ -32,7 +32,7 @@ class AISajuLottoSystem:
             }
         
         try:
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-1.5-flash')
             prompt = f"""
             너는 정통 사주명리학과 성명학에 정통한 대한민국 최고의 AI 역술가이다.
             아래 사용자의 명식 정보를 기반으로 정밀 사주를 분석하고 이번 주 주간 운세를 작성하라.
@@ -114,7 +114,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>로또 필터 시스템</title>
+        <title>AI로또 필터 시스템</title>
         <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <style>
@@ -238,7 +238,7 @@ def lotto_screen(user_name: str = Form(...), year: int = Form(...), birth_date: 
             </div>
             
             <div class="ai-box">
-                <div class="ai-title">🤖 명리 대가 Gemini AI의 맞춤 운세 해설</div>
+                <div class="ai-title">Gemini AI의 맞춤 운세 해설</div>
                 {formatted_reading}
                 <br><br>
                 💡 <i>AI가 지정한 보완 오행 번호대에 <b>재물 가중치(3.5x)</b>를 부여하여 번호를 조합했습니다.</i>
