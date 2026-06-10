@@ -2,7 +2,7 @@ import os
 import random
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
-import google.generativeai as genai
+from google import genai
 
 app = FastAPI()
 
