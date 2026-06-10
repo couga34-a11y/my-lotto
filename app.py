@@ -184,7 +184,7 @@ def index():
                     </select>
                 </div>
                 <button type="submit" id="btn-submit" class="btn">AI 융합 사주 분석 및 번호 추출</button>
-                <div id="loading">AI 사주 명식 연산 및 로또 조합 필터링 중... (정밀 추론으로 인해 약 10~15초 소요)</div>
+                <div id="loading">AI 사주 연산 및 로또 조합 필터링 중... <br>(정밀 추론으로 인해 약 10~15초 소요)</div>
             </form>
         </div>
     </body>
