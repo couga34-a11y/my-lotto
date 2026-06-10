@@ -132,7 +132,7 @@ def index():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>로또 필터 시스템</title>
+        <title>AI LOTTO FILTER SYSTEM</title>
         <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <style>
@@ -150,7 +150,7 @@ def index():
     </head>
     <body>
         <div class="container">
-            <h2>AI 로또 사주 명식 필터</h2>
+            <h2>AI LOTTO FILTER SYSTEM</h2>
             <p>구글 Gemini AI가 선천적 명식과 성명학을 실시간 분석하여 최적의 횡재수 보완 필터링을 수행합니다.</p>
             <form action="/lotto" method="post" onsubmit="document.getElementById('btn-submit').style.display='none'; document.getElementById('loading').style.display='block';">
                 <div class="form-group">
@@ -159,7 +159,7 @@ def index():
                 </div>
                 <div class="form-group">
                     <label>출생 연도 (4자리)</label>
-                    <input type="number" name="year" placeholder="예: 1985" required min="1930" max="2026">
+                    <input type="number" name="year" placeholder="예: 1999" required min="1930" max="2026">
                 </div>
                 <div class="form-group">
                     <label>출생 월 및 일</label>
@@ -236,7 +236,7 @@ def lotto_screen(
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>로또 필터 시스템</title>
+        <title>AI LOTTO FILTER SYSTEM</title>
         <style>
             body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f7fb; margin: 0; padding: 20px; display: flex; justify-content: center; }}
             .container {{ width: 100%; max-width: 480px; background: white; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); box-sizing: border-box; }}
@@ -258,14 +258,14 @@ def lotto_screen(
     </head>
     <body>
         <div class="container">
-            <h2>AI 로또 명식 필터 결과</h2>
+            <h2>AI 로또 필터 결과</h2>
             
             <div class="saju-box">
                 🔮 <b>입력 명식:</b> {user_name}님 / {year}년 {birth_date[:2]}월 {birth_date[2:]}일 ({time_slot} 출생)
             </div>
             
             <div class="ai-box">
-                <div class="ai-title">🤖 명리 대가 Gemini AI의 명품 운세 해설</div>
+                <div class="ai-title">Gemini AI의 운세 해설</div>
                 {formatted_reading}
                 <br><br>
                 💡 <i>AI가 지정한 보완 오행 번호대에 <b>재물 가중치(3.5x)</b>를 부여하여 번호를 조합했습니다.</i>
@@ -273,7 +273,7 @@ def lotto_screen(
 
             <div class="results">{games_html}</div>
 
-            <a href="/" class="btn">다시 명식 입력하기</a>
+            <a href="/" class="btn">다시 입력하기</a>
         </div>
     </body>
     </html>
