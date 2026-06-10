@@ -7,11 +7,14 @@ from google.genai import types
 
 app = FastAPI()
 
-# 최신 google-genai 클라이언트 초기화
+# 최신 2026년형 google-genai 클라이언트 설정 (API 버전을 v1 안정판으로 강제 고정)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 client = None
 if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(
+        api_key=GEMINI_API_KEY,
+        http_options={'api_version': 'v1'}
+    )
 
 
 class PremiumAISajuSystem:
@@ -52,9 +55,10 @@ class PremiumAISajuSystem:
             3. 답변의 맨 마지막 줄에는 반드시 딱 이 형태 그대로만 추가하라: "최종 보완 오행: [오행]"
                ([오행] 자리에 木, 火, 土, 金, 水 중 이번 주 로또 횡재수를 도울 가장 필요한 오행 딱 하나만 선택하여 넣어라. 예: 최종 보완 오행: 水)
             """
-            # 최신 SDK 표준 메서드 적용 (gemini-1.5-flash)
+            
+            # 2026년 기준 최고 성능의 디폴트 프로덕션 모델 'gemini-3.5-flash' 호출
             response = client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-3.5-flash",
                 contents=prompt,
             )
             full_text = response.text
@@ -181,7 +185,7 @@ def index():
                     </select>
                 </div>
                 <button type="submit" id="btn-submit" class="btn">AI 융합 사주 분석 및 번호 추출</button>
-                <div id="loading">AI가 우주의 기운과 명식을 정밀 분석 중입니다... (약 2~3초 소요)</div>
+                <div id="loading">🔮 AI가 우주의 기운과 명식을 정밀 분석 중입니다... (약 2~3초 소요)</div>
             </form>
         </div>
     </body>
@@ -265,7 +269,7 @@ def lotto_screen(
             </div>
             
             <div class="ai-box">
-                <div class="ai-title">명리 대가 Gemini AI의 맞춤 운세 해설</div>
+                <div class="ai-title">🤖 명리 대가 Gemini AI의 맞춤 운세 해설</div>
                 {formatted_reading}
                 <br><br>
                 💡 <i>AI가 지정한 보완 오행 번호대에 <b>재물 가중치(3.5x)</b>를 부여하여 번호를 조합했습니다.</i>
