@@ -1,83 +1,73 @@
+import os
 import random
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
+import google.generativeai as genai
 
 app = FastAPI()
 
+# Render 환경변수 또는 로컬 설정에서 Gemini API 키 로드
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
-class PremiumSajuLottoSystem:
-
+class AISajuLottoSystem:
     def __init__(self):
         self.pool = list(range(1, 46))
-        # 오행별 고유 번호대 매핑
+        # 오행별 기본 매핑 데이터 (필터 가중치 반영용 기본 축)
         self.element_map = {
-            "木 (성장과 시작)": [3, 4, 8, 13, 14, 18, 23, 24, 28, 33, 34, 38, 43, 44],
-            "火 (열정과 확산)": [2, 7, 12, 17, 22, 27, 32, 37, 42],
-            "土 (안정과 조화)": [5, 10, 15, 20, 25, 30, 35, 40, 45],
-            "金 (결단과 횡재)": [4, 9, 14, 19, 24, 29, 34, 39],
-            "水 (지혜와 흐름)": [1, 6, 11, 16, 21, 26, 31, 36, 41],
+            "木": [3, 4, 8, 13, 14, 18, 23, 24, 28, 33, 34, 38, 43, 44],
+            "火": [2, 7, 12, 17, 22, 27, 32, 37, 42],
+            "土": [5, 10, 15, 20, 25, 30, 35, 40, 45],
+            "金": [4, 9, 14, 19, 24, 29, 34, 39],
+            "水": [1, 6, 11, 16, 21, 26, 31, 36, 41]
         }
 
-    def _calculate_advanced_saju(
-        self, name: str, year: int, birth_date: str, time_slot: str
-    ):
-        """이름, 년, 월, 일, 시를 융합하여 결정론적 사주 데이터셋을 도출하는 핵심 알고리즘"""
-        name_hash = sum(ord(char) for char in name)
-
+    def _get_ai_fortune(self, name: str, year: int, birth_date: str, time_slot: str):
+        """Gemini AI를 호출하여 고유한 사주 분석 및 로또 행운 요소를 획득하는 함수"""
+        if not GEMINI_API_KEY:
+            return {
+                "reading": "현재 AI 엔진의 핵심 Key 설정이 누락되었습니다. Render 대시보드에서 환경변수를 설정해 주십시오.",
+                "lucky_element": "金"
+            }
+        
         try:
-            month = int(birth_date[:2])
-            day = int(birth_date[2:])
-        except:
-            month, day = 1, 1
-
-        time_weights = {
-            "unknown": 5, "자시": 1, "축시": 2, "인시": 3, "묘시": 4, 
-            "진시": 5, "사시": 6, "오시": 7, "미시": 8, "신시": 9, 
-            "유시": 10, "술시": 11, "해시": 12
-        }
-        time_val = time_weights.get(time_slot, 5)
-
-        # 융합 매직 넘버 생성
-        magic_number = name_hash + year + month + day + time_val
-
-        elements_list = [
-            "木 (성장과 시작)",
-            "火 (열정과 확산)",
-            "土 (안정과 조화)",
-            "金 (결단과 횡재)",
-            "水 (지혜와 흐름)",
-        ]
-        selected_element = elements_list[magic_number % 5]
-
-        # 매직 넘버 기반 가변 운세 데이터 생성
-        days_pool = [("월요일", "수요일"), ("화요일", "목요일"), ("수요일", "금요일"), ("목요일", "토요일"), ("월요일", "금요일")]
-        directions_pool = ["동쪽", "서쪽", "남쪽", "북쪽", "동남쪽"]
-        
-        money_fortunes = [
-            "횡재수보다는 리스크 방어가 우선입니다. 보수적 스탠스를 유지하십시오.",
-            "예상치 못한 소소한 이익이 따릅니다. 자산 관리에 집중하십시오.",
-            "투자운이 평탄합니다. 무리한 지출을 피하면 결실이 맺힙니다.",
-            "강한 재물 기운이 흐릅니다. 결단력을 발휘하기 좋은 시기입니다.",
-            "안정적인 재물 축적이 가능한 흐름입니다. 내실을 다지십시오."
-        ]
-        
-        job_fortunes = [
-            "본인의 전문 영역에서 완벽성을 기할 수 있는 안정적인 타이밍입니다.",
-            "주변과의 불필요한 마찰을 피하면 무난하고 평온하게 흐릅니다.",
-            "맡은 바 임무나 정비, 관리 등에서 역량이 빛을 발하는 주간입니다.",
-            "새로운 변화보다는 기존 기반을 점검하고 유지할 때 이롭습니다.",
-            "동료들과의 협업이나 소통을 통해 복잡한 문제가 매끄럽게 해결됩니다."
-        ]
-
-        fortune_data = {
-            "element": selected_element,
-            "days": days_pool[magic_number % 5],
-            "direction": directions_pool[magic_number % 5],
-            "money": money_fortunes[magic_number % 5],
-            "job": job_fortunes[magic_number % 5]
-        }
-
-        return fortune_data
+            model = genai.GenerativeModel('gemini-pro')
+            prompt = f"""
+            너는 정통 사주명리학과 성명학에 정통한 대한민국 최고의 AI 역술가이다.
+            아래 사용자의 명식 정보를 기반으로 정밀 사주를 분석하고 이번 주 주간 운세를 작성하라.
+            
+            [사용자 명식 정보]
+            - 성함: {name}
+            - 출생연도: {year}년
+            - 출생월일: {birth_date[:2]}월 {birth_date[2:]}일
+            - 태어난 시간: {time_slot}
+            
+            [작성 지침 - 절대 준수]
+            1. 존댓말로 작성하고 전문적이고 신뢰감 있는 무당 혹은 역술가의 뉘앙스를 풍겨라.
+            2. 이번 주의 '종합 주간 총평', '재물운', '직장/커리어운', '행운의 요일(평일 중 2개)', '행운의 구매 방위'를 융합하여 서술형 문장들로 아주 정밀하게 풀어내라.
+            3. 답변의 맨 마지막 줄에는 반드시 딱 이 형태 그대로만 추가하라: "최종 보완 오행: [오행]"
+               ([오행] 자리에 木, 火, 土, 金, 水 중 사용자의 이름과 사주 밸런스를 고려해 이번 주 로또 횡재수를 도울 가장 필요한 오행 딱 하나만 선택하여 넣어라. 예: 최종 보완 오행: 水)
+            """
+            response = model.generate_content(prompt)
+            full_text = response.text
+            
+            # 마지막 줄에서 보완 오행 추출하는 파싱 로직
+            lucky_element = "金"
+            for el in ["木", "火", "土", "金", "水"]:
+                if f"최종 보완 오행: {el}" in full_text or el in full_text[-20:]:
+                    lucky_element = el
+                    break
+            
+            # 화면 표시를 위해 특수 지시어 라인 제거
+            display_text = full_text.replace(f"최종 보완 오행: {lucky_element}", "").strip()
+            return {"reading": display_text, "lucky_element": lucky_element}
+            
+        except Exception as e:
+            return {
+                "reading": f"우주의 기운을 읽어오는 중 미세한 노이즈가 발생했습니다. (에러: {str(e)})",
+                "lucky_element": "土"
+            }
 
     def _verify_combination(self, numbers):
         total_sum = sum(numbers)
@@ -101,9 +91,9 @@ class PremiumSajuLottoSystem:
 
     def generate_saju_games(self, target_element, count=5):
         weights = [1.0] * 45
-        lucky_numbers = self.element_map.get(target_element, [])
+        lucky_numbers = self.element_map.get(target_element, [4, 9, 14, 19, 24, 29, 34, 39])
         for num in lucky_numbers:
-            weights[num - 1] = 3.0
+            weights[num - 1] = 3.5  # AI가 지정한 행운 오행의 가중치를 3.5배로 더 강화
 
         results = []
         while len(results) < count:
@@ -114,13 +104,8 @@ class PremiumSajuLottoSystem:
                 results.append(selected)
         return results
 
+saju_system = AISajuLottoSystem()
 
-saju_system = PremiumSajuLottoSystem()
-
-
-# ----------------------------------------------------
-# 1. 입력 화면 HTML
-# ----------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 def index():
     return """
@@ -133,4 +118,135 @@ def index():
         <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: radial-gradient(circle at center, #1a2a4c 0%, #0d1a33 100%); margin: 0
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: radial-gradient(circle at center, #1a2a4c 0%, #0d1a33 100%); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; box-sizing: border-box; }
+            .container { width: 100%; max-width: 400px; background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 24px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); box-sizing: border-box; text-align: center; }
+            h2 { margin-top: 0; font-size: 22px; color: #ffd700; }
+            p { color: #a1b0cc; font-size: 14px; margin-bottom: 25px; }
+            .form-group { margin-bottom: 20px; text-align: left; }
+            label { display: block; font-size: 13px; color: #cbd5e1; margin-bottom: 8px; font-weight: 500; }
+            input, select { width: 100%; padding: 14px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: #fff; font-size: 16px; box-sizing: border-box; outline: none; }
+            input:focus, select:focus { border-color: #ffd700; }
+            .btn { display: block; width: 100%; padding: 16px; background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%); color: #0d1a33; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2); }
+            #loading { display: none; margin-top: 15px; font-size: 14px; color: #ffd700; font-weight: bold; }
+        </style>
+        <script>
+            def showLoading():
+                document.getElementById('btn-submit').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h2>AI 로또 사주 명식 필터</h2>
+            <p>구글 Gemini AI가 선천적 명식과 성명학을 실시간 분석하여 최적의 횡재수 보완 필터링을 수행합니다.</p>
+            <form action="/lotto" method="post" onsubmit="document.getElementById('btn-submit').style.display='none'; document.getElementById('loading').style.display='block';">
+                <div class="form-group">
+                    <label>성함</label>
+                    <input type="text" name="user_name" placeholder="예: 홍길동" required>
+                </div>
+                <div class="form-group">
+                    <label>출생 연도 (4자리)</label>
+                    <input type="number" name="year" placeholder="예: 1985" required min="1930" max="2026">
+                </div>
+                <div class="form-group">
+                    <label>출생 월 및 일</label>
+                    <input type="text" name="birth_date" placeholder="예: 0317" required pattern="[0-9]{4}">
+                </div>
+                <div class="form-group">
+                    <label>태어난 시간</label>
+                    <select name="time_slot">
+                        <option value="unknown">모름 / 상관없음</option>
+                        <option value="자시">자시 (23시~01시)</option>
+                        <option value="축시">축시 (01시~03시)</option>
+                        <option value="인시">인시 (03시~05시)</option>
+                        <option value="묘시">묘시 (05시~07시)</option>
+                        <option value="진시">진시 (07시~09시)</option>
+                        <option value="사시">사시 (09시~11시)</option>
+                        <option value="오시">오시 (11시~13시)</option>
+                        <option value="미시">미시 (13시~15시)</option>
+                        <option value="신시">신시 (15시~17시)</option>
+                        <option value="유시">유시 (17시~19시)</option>
+                        <option value="술시">술시 (19시~21시)</option>
+                        <option value="해시">해시 (21시~23시)</option>
+                    </select>
+                </div>
+                <button type="submit" id="btn-submit" class="btn">AI 융합 사주 분석 및 번호 추출</button>
+                <div id="loading">🔮 AI가 우주의 기운과 명식을 정밀 분석 중입니다... (약 2~3초 소요)</div>
+            </form>
+        </div>
+    </body>
+    </html>
+    """
+
+@app.post("/lotto", response_class=HTMLResponse)
+def lotto_screen(user_name: str = Form(...), year: int = Form(...), birth_date: str = Form(...), time_slot: str = Form(...)):
+    # AI 기반 실시간 풀이 데이터 획득
+    ai_data = saju_system._get_ai_fortune(user_name, year, birth_date, time_slot)
+    games = saju_system.generate_saju_games(ai_data["lucky_element"], 5)
+
+    def get_color_class(num):
+        if num <= 10: return "ball-yellow"
+        elif num <= 20: return "ball-blue"
+        elif num <= 30: return "ball-red"
+        elif num <= 40: return "ball-gray"
+        else: return "ball-green"
+
+    games_html = ""
+    for idx, game in enumerate(games, 1):
+        balls_html = "".join(f'<div class="ball {get_color_class(n)}">{n:02d}</div>' for n in game)
+        games_html += f"""
+        <div class="game-row">
+            <span class="game-label">{idx}게임</span>
+            <div class="balls-container">{balls_html}</div>
+        </div>
+        """
+
+    # AI가 줄바꿈(\n) 처리한 문장들을 HTML 줄바꿈(<br>)으로 변경
+    formatted_reading = ai_data["reading"].replace("\n", "<br>")
+
+    return f"""
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>로또 필터 시스템</title>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f7fb; margin: 0; padding: 20px; display: flex; justify-content: center; }}
+            .container {{ width: 100%; max-width: 480px; background: white; padding: 25px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); box-sizing: border-box; }}
+            h2 {{ text-align: center; color: #333; margin-top: 0; margin-bottom: 15px; font-size: 22px; }}
+            .saju-box {{ background: #f0f4fc; border-radius: 12px; padding: 15px; margin-bottom: 15px; font-size: 14px; color: #3b82f6; border-left: 5px solid #3b82f6; text-align: left; line-height: 1.5; }}
+            .ai-box {{ background: #fdfaf2; border-radius: 12px; padding: 18px; margin-bottom: 20px; font-size: 14px; color: #333; border-left: 5px solid #d4af37; text-align: left; line-height: 1.7; box-shadow: inset 0 0 10px rgba(0,0,0,0.01); }}
+            .ai-title {{ font-weight: bold; font-size: 15px; margin-bottom: 10px; color: #b8860b; border-bottom: 1px solid #f1e3c4; padding-bottom: 5px; }}
+            .game-row {{ display: flex; align-items: center; margin-bottom: 15px; padding: 12px; background: #fafbfc; border-radius: 12px; border: 1px solid #edf1f7; }}
+            .game-label {{ font-weight: bold; color: #555; font-size: 14px; width: 50px; flex-shrink: 0; }}
+            .balls-container {{ display: flex; gap: 8px; justify-content: flex-start; width: 100%; }}
+            .ball {{ width: 36px; height: 36px; border-radius: 50%; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
+            .ball-yellow {{ background: #fbc02d; }}
+            .ball-blue {{ background: #1e88e5; }}
+            .ball-red {{ background: #e53935; }}
+            .ball-gray {{ background: #8e8e93; }}
+            .ball-green {{ background: #43a047; }}
+            .btn {{ display: block; width: 100%; padding: 15px; background: #3182f6; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; text-align: center; box-shadow: 0 4px 10px rgba(49,130,246,0.3); transition: background 0.2s; margin-top: 25px; text-decoration: none; box-sizing: border-box; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>AI 로또 명식 필터 결과</h2>
+            <div class="saju-box">
+                🔮 <b>입력 명식:</b> {user_name}님 / {year}년 {birth_date[:2]}월 {birth_date[2:]}일 ({time_slot} 출생)
+            </div>
+            
+            <div class="ai-box">
+                <div class="ai-title">🤖 명리 대가 Gemini AI의 맞춤 운세 해설</div>
+                {formatted_reading}
+                <br><br>
+                💡 <i>AI가 지정한 보완 오행 번호대에 <b>재물 가중치(3.5x)</b>를 부여하여 번호를 조합했습니다.</i>
+            </div>
+
+            <div class="results">{games_html}</div>
+            <a href="/" class="btn">다시 명식 입력하기</a>
+        </div>
+    </body>
+    </html>
+    """
