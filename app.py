@@ -258,7 +258,7 @@ def lotto_screen(
     </head>
     <body>
         <div class="container">
-            <h2>AI 로또 필터 결과</h2>
+            <h2>AI 로또 필터링 결과</h2>
             
             <div class="saju-box">
                 🔮 <b>입력 명식:</b> {user_name}님 / {year}년 {birth_date[:2]}월 {birth_date[2:]}일 ({time_slot} 출생)
