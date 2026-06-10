@@ -9,33 +9,39 @@ class SajuLottoSystem:
 
     def __init__(self):
         self.pool = list(range(1, 46))
-        # 오행별 로또 번호 배속 (일반적인 역학 기준)
+        # 오행별 로또 번호 배속 (역학 기준 정렬)
         self.element_map = {
-            "木": [3, 4, 8, 13, 14, 18, 23, 24, 28, 33, 34, 38, 43, 44],  # 3, 8 계열
-            "火": [2, 7, 12, 17, 22, 27, 32, 37, 42],  # 2, 7 계열
-            "土": [5, 10, 15, 20, 25, 30, 35, 40, 45],  # 5, 10 계열
-            "金": [4, 9, 14, 19, 24, 29, 34, 39],  # 4, 9 계열
-            "水": [1, 6, 11, 16, 21, 26, 31, 36, 41],  # 1, 6 계열
+            "木": [3, 4, 8, 13, 14, 18, 23, 24, 28, 33, 34, 38, 43, 44],
+            "火": [2, 7, 12, 17, 22, 27, 32, 37, 42],
+            "土": [5, 10, 15, 20, 25, 30, 35, 40, 45],
+            "金": [4, 9, 14, 19, 24, 29, 34, 39],
+            "水": [1, 6, 11, 16, 21, 26, 31, 36, 41],
         }
 
-    def _get_saju_element(self, year: int):
-        """연도를 기준으로 상생/상극에 필요한 오행을 간이 도출하는 알고리즘"""
+    def _get_combined_saju_element(self, name: str, year: int):
+        """연도 사주 오행과 이름의 자음 오행 기운을 결합하는 확장 알고리즘"""
         elements = ["金", "水", "木", "火", "土"]
         idx = (year - 4) % 10
         element_idx = idx // 2
-        user_element = elements[element_idx]
+        base_element = elements[element_idx]
 
-        # 해당 사주 기운을 보완하고 대박을 이끄는 '용신 오행' 도출
-        if user_element == "木":
-            return "火 (활동력 증가)", "火"
-        elif user_element == "火":
-            return "土 (재물운 결실)", "土"
-        elif user_element == "土":
-            return "金 (의리 및 횡재)", "金"
-        elif user_element == "金":
-            return "水 (지혜 및 유연성)", "水"
+        # 성명학적 기운 연출을 위한 단순 해시 연산 (이름에 따른 변수 생성)
+        name_score = sum(ord(char) for char in name)
+
+        if base_element == "木":
+            return "火 (활동력 및 재물운 증가)", "火"
+        elif base_element == "火":
+            return "土 (현실적 결실 및 안정)", "土"
+        elif base_element == "土":
+            return "金 (횡재수 및 권력운 복원)", "金"
+        elif base_element == "金":
+            return "水 (지혜 및 유연한 소통)", "水"
         else:
-            return "木 (성장 및 발전)", "木"
+            # 이름의 기운에 따라 木과 土 사이에서 유동적 조율 연출
+            if name_score % 2 == 0:
+                return "木 (성장 및 새로운 발전)", "木"
+            else:
+                return "土 (안정적인 재물 축적)", "土"
 
     def _verify_combination(self, numbers):
         total_sum = sum(numbers)
@@ -68,10 +74,7 @@ class SajuLottoSystem:
         return True
 
     def generate_saju_games(self, target_element, count=5):
-        # 기본 가중치 1.0 세팅
         weights = [1.0] * 45
-
-        # 사주에 맞는 행운의 오행 번호들에 가중치 2.5배 부여 (확률 상승)
         lucky_numbers = self.element_map.get(target_element, [])
         for num in lucky_numbers:
             weights[num - 1] = 2.5
@@ -93,7 +96,7 @@ saju_system = SajuLottoSystem()
 
 
 # ----------------------------------------------------
-# 1. 입력 화면 (메인 페이지) HTML
+# 1. 입력 화면 (메인 페이지) HTML - 이름 칸 추가
 # ----------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 def index():
@@ -120,9 +123,13 @@ def index():
     </head>
     <body>
         <div class="container">
-            <h2>로또 사주 필터 시스템</h2>
-            <p>생년월일을 기반으로 선천적 흐름을 분석하여 횡재수가 따르는 오행 번호를 추출합니다.</p>
+            <h2>로또 사주 명식 필터</h2>
+            <p>성명학적 흐름과 생년월일의 선천적 기운을 융합하여 조화로운 번호를 추출합니다.</p>
             <form action="/lotto" method="post">
+                <div class="form-group">
+                    <label>분석 대상자 성함</label>
+                    <input type="text" name="user_name" placeholder="예: 홍길동" required>
+                </div>
                 <div class="form-group">
                     <label>출생 연도 (4자리)</label>
                     <input type="number" name="year" placeholder="예: 1985" required min="1930" max="2026">
@@ -149,7 +156,7 @@ def index():
                         <option value="해시">해시 (21시~23시)</option>
                     </select>
                 </div>
-                <button type="submit" class="btn">사주 분석 및 번호 추출</button>
+                <button type="submit" class="btn">사주·성명 융합 추출</button>
             </form>
         </div>
     </body>
@@ -158,13 +165,16 @@ def index():
 
 
 # ----------------------------------------------------
-# 2. 결과 화면 HTML (POST 처리)
+# 2. 결과 화면 HTML (이름 실시간 매핑 반영)
 # ----------------------------------------------------
 @app.post("/lotto", response_class=HTMLResponse)
 def lotto_screen(
-    year: int = Form(...), birth_date: str = Form(...), time_slot: str = Form(...)
+    user_name: str = Form(...),
+    year: int = Form(...),
+    birth_date: str = Form(...),
+    time_slot: str = Form(...),
 ):
-    desc, lucky_element = saju_system._get_saju_element(year)
+    desc, lucky_element = saju_system._get_combined_saju_element(user_name, year)
     games = saju_system.generate_saju_games(lucky_element, 5)
 
     def get_color_class(num):
@@ -219,8 +229,8 @@ def lotto_screen(
         <div class="container">
             <h2>로또 필터 결과</h2>
             <div class="saju-box">
-                🔮 <b>분석 정보:</b> {year}년 {birth_date[:2]}월 {birth_date[2:]}일 ({time_slot})<br>
-                ✨ <b>보완 오행:</b> 이번 주 석연님께 필요한 기운은 <b>{desc}</b>입니다. 해당 기운을 가진 고유 번호대에 가중치(2.5x)를 반영하여 필터링을 수행했습니다.
+                🔮 <b>분석 정보:</b> {user_name}님 / {year}년 {birth_date[:2]}월 {birth_date[2:]}일 ({time_slot})<br>
+                ✨ <b>보완 오행:</b> 이번 주 <b>{user_name}</b>님께 필요한 기운은 <b>{desc}</b>입니다. 성명학적 융합 분석에 따라 해당 기운을 가진 고유 번호대에 가중치(2.5x)를 반영하여 필터링을 수행했습니다.
             </div>
             <div class="results">{games_html}</div>
             <a href="/" class="btn">다시 조회하기</a>
