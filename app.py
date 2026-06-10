@@ -3,11 +3,10 @@ import random
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 from google import genai
-from google.genai import types
 
 app = FastAPI()
 
-# 구글 공식 최신 SDK 설정 (API v1 안정판 고정)
+# 불필요한 import types를 제거하고 클라이언트만 안전하게 초기화
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 client = None
 if GEMINI_API_KEY:
@@ -56,7 +55,7 @@ class PremiumAISajuSystem:
                ([오행] 자리에 木, 火, 土, 金, 水 중 이번 주 로또 횡재수를 도울 가장 필요한 오행 딱 하나만 선택하여 넣어라. 예: 최종 보완 오행: 水)
             """
             
-            # 레이턴시 극소화를 위한 초경량 고속 모델 gemini-3.1-flash-lite 적용
+            # gemini-3.1-flash-lite 모델 호출
             response = client.models.generate_content(
                 model="gemini-3.1-flash-lite",
                 contents=prompt,
@@ -91,4 +90,73 @@ class PremiumAISajuSystem:
         consecutive_count = 0
         max_consecutive = 1
         current_consecutive = 1
-        for i in range(len(numbers
+        for i in range(len(numbers) - 1):
+            if numbers[i + 1] - numbers[i] == 1:
+                current_consecutive += 1
+                consecutive_count += 1
+            else:
+                if current_consecutive > max_consecutive:
+                    max_consecutive = current_consecutive
+                current_consecutive = 1
+        if current_consecutive > max_consecutive:
+            max_consecutive = current_consecutive
+        if max_consecutive >= 3 or consecutive_count >= 3:
+            return False
+        return True
+
+    def generate_games(self, target_element, count=5):
+        weights = [1.0] * 45
+        lucky_numbers = self.element_map.get(target_element, [])
+        for num in lucky_numbers:
+            weights[num - 1] = 3.5
+
+        results = []
+        while len(results) < count:
+            selected = random.choices(self.pool, weights=weights, k=10)
+            selected = sorted(list(set(selected)))[:6]
+            if len(selected) < 6:
+                continue
+            if self.verify_numbers(selected) and selected not in results:
+                results.append(selected)
+        return results
+
+
+saju_system = PremiumAISajuSystem()
+
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return """
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>로또 필터 시스템</title>
+        <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: radial-gradient(circle at center, #1a2a4c 0%, #0d1a33 100%); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; box-sizing: border-box; }
+            .container { width: 100%; max-width: 400px; background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 24px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); box-sizing: border-box; text-align: center; }
+            h2 { margin-top: 0; font-size: 22px; color: #ffd700; }
+            p { color: #a1b0cc; font-size: 14px; margin-bottom: 25px; }
+            .form-group { margin-bottom: 20px; text-align: left; }
+            label { display: block; font-size: 13px; color: #cbd5e1; margin-bottom: 8px; font-weight: 500; }
+            input, select { width: 100%; padding: 14px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: #fff; font-size: 16px; box-sizing: border-box; outline: none; }
+            input:focus, select:focus { border-color: #ffd700; }
+            .btn { display: block; width: 100%; padding: 16px; background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%); color: #0d1a33; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2); }
+            #loading { display: none; margin-top: 15px; font-size: 14px; color: #ffd700; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>AI 로또 사주 명식 필터</h2>
+            <p>구글 Gemini AI가 선천적 명식과 성명학을 실시간 분석하여 최적의 횡재수 보완 필터링을 수행합니다.</p>
+            <form action="/lotto" method="post" onsubmit="document.getElementById('btn-submit').style.display='none'; document.getElementById('loading').style.display='block';">
+                <div class="form-group">
+                    <label>성함</label>
+                    <input type="text" name="user_name" placeholder="예: 홍길동" required>
+                </div>
+                <div class="form-group">
+                    <label>출생 연도 (4자리)</label>
+                    <input type="number" name="year" placeholder="예: 19
