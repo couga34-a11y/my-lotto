@@ -133,29 +133,11 @@ def index():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>AI LOTTO FILTER SYSTEM</title>
-        <!-- 파비콘 및 앱 아이콘 설정 -->
         <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <link rel="icon" type="image/png" sizes="32x32" href="https://i.ibb.co/3s8sK8b/swirl-particles.png">
         <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: radial-gradient(circle at center, #1a2a4c 0%, #0d1a33 100%); margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; box-sizing: border-box; overflow-x: hidden; }
-            
-            /* ✨ 1. 완성된 표지 이미지 (Splash Screen) 스타일 수정 */
-            #splash-screen {
-                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                /* 완성된 이미지를 배경으로 설정하고 화면에 꽉 차게 맞춥니다. */
-                background-image: url("https://i.ibb.co/3s8sK8b/swirl-particles.png"); /* 여기에 호스팅된 이미지 URL을 입력하세요. */
-                background-size: cover; /* 이미지가 화면 비율에 맞춰 확장/축소됩니다. */
-                background-position: center; /* 이미지를 중앙에 배치합니다. */
-                background-repeat: no-repeat; /* 이미지를 반복하지 않습니다. */
-                display: flex; flex-direction: column; justify-content: center; align-items: center;
-                z-index: 9999; transition: opacity 0.5s ease-out, visibility 0.5s;
-                opacity: 1;
-            }
-            /* 이미지 자체에 타이틀이 포함되어 있으므로, 내부 HTML 요소들은 더 이상 필요하지 않습니다. */
-            
-            /* 🖥️ 2. 메인 입력창 컨테이너 (초기에는 숨김) */
-            .container { display: none; width: 100%; max-width: 400px; background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 24px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); box-sizing: border-box; text-align: center; margin: 20px; animation: fadeIn 0.6s ease-out; }
-            
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: radial-gradient(circle at center, #1a2a4c 0%, #0d1a33 100%); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; box-sizing: border-box; }
+            .container { width: 100%; max-width: 400px; background: rgba(255, 255, 255, 0.08); padding: 30px 20px; border-radius: 24px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); box-sizing: border-box; text-align: center; }
             h2 { margin-top: 0; font-size: 22px; color: #ffd700; }
             p { color: #a1b0cc; font-size: 14px; margin-bottom: 25px; }
             .form-group { margin-bottom: 20px; text-align: left; }
@@ -163,21 +145,11 @@ def index():
             input, select { width: 100%; padding: 14px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: #fff; font-size: 16px; box-sizing: border-box; outline: none; }
             input:focus, select:focus { border-color: #ffd700; }
             .btn { display: block; width: 100%; padding: 16px; background: linear-gradient(135deg, #ffd700 0%, #b8860b 100%); color: #0d1a33; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 25px; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2); }
-            #loading { display: none; margin-top: 15px; font-size: 14px; color: #ffd700; font-weight: bold; line-height: 1.6; }
-
-            /* 애니메이션 효과 */
-            @keyframes pulse { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.05); opacity: 1; } }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            #loading { display: none; margin-top: 15px; font-size: 14px; color: #ffd700; font-weight: bold; }
         </style>
     </head>
     <body>
-
-        <!-- 🔮 1. 완성된 이미지가 적용될 표지 화면 영역 -->
-        <!-- 이미지 자체에 모든 내용이 포함되어 있으므로, div 내부의 기존 텍스트 및 이모지는 제거합니다. -->
-        <div id="splash-screen"></div>
-
-        <!-- 🖥️ 2. 메인 사주 입력창 영역 -->
-        <div class="container" id="main-container">
+        <div class="container">
             <h2>AI LOTTO FILTER SYSTEM</h2>
             <p>구글 Gemini AI가 선천적 명식과 성명학을 실시간 분석하여 최적의 횡재수 보완 필터링을 수행합니다.</p>
             <form action="/lotto" method="post" onsubmit="document.getElementById('btn-submit').style.display='none'; document.getElementById('loading').style.display='block';">
@@ -187,7 +159,7 @@ def index():
                 </div>
                 <div class="form-group">
                     <label>출생 연도 (4자리)</label>
-                    <input type="number" name="year" placeholder="예: 1985" required min="1930" max="2026">
+                    <input type="number" name="year" placeholder="예: 1999" required min="1930" max="2026">
                 </div>
                 <div class="form-group">
                     <label>출생 월 및 일</label>
@@ -212,26 +184,9 @@ def index():
                     </select>
                 </div>
                 <button type="submit" id="btn-submit" class="btn">AI 융합 사주 분석 및 번호 추출</button>
-                <div id="loading">AI 사주 연산 및 로또 조합 필터링 중...<br>(정밀 추론으로 인해 약 10~15초 소요)</div>
+                <div id="loading">AI 사주 연산 및 로또 조합 필터링 중...<br>(정밀 추론 연산으로 인해 약 10~15초 소요)</div>
             </form>
         </div>
-
-        <!-- ⚡ 3. 2.5초 후 자동 화면 전환 스크립트 (기존과 동일) -->
-        <script>
-            window.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => {
-                    const splash = document.getElementById('splash-screen');
-                    const main = document.getElementById('main-container');
-                    
-                    // 표지 부드럽게 사라지기
-                    splash.style.opacity = '0';
-                    splash.style.visibility = 'hidden';
-                    
-                    // 입력창 나타내기
-                    main.style.display = 'block';
-                }, 2500); // 정확히 2.5초 동안 대기 후 실행
-            });
-        </script>
     </body>
     </html>
     """
